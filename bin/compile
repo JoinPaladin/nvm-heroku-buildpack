@@ -1,0 +1,44 @@
+#!/bin/bash
+
+BUILD_DIR=$1
+
+if [ ! -f $BUILD_DIR/nvm-projects.json ]; then
+    echo "nvm-projects.json not found, skipping NVM buildpack"
+    exit 0
+fi
+
+# Download and install jq
+curl -L -o bin/jq https://github.com/stedolan/jq/releases/download/1.7.1/jq-linux64
+chmod +x bin/jq
+
+# Download and install NVM
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+
+# Activate NVM
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Load declared projects
+project_file="$BUILD_DIR/nvm-projects.json"
+projects=$(jq -c '.[]' "$project_file")
+
+# Iterate through projects
+while IFS= read -r project; do
+  name=$(echo "$project" | jq -r '.name')
+  package_path=$(echo "$project" | jq -r '.package_path')
+
+  cd "$(dirname "$BUILD_DIR/$package_path")" || exit
+  node_version=$(jq -r '.engines.node' package.json)
+
+  # Install project's Node.js
+  nvm install "$node_version" || { echo "Installing Node.js version matching $node_version"; nvm install "${node_version%%.*}"; }
+  nvm use "$node_version"
+
+  # Install project's dependencies
+  npm install
+  echo "Installed dependencies for $name - Version $node_version"
+
+  # Build project
+  npm run-script build
+  echo "Build command finished for $name - Version $node_version"
+done <<< "$projects"
