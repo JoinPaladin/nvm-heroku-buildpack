@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
 
-echo "NVM"
-exit 0
+BUILD_DIR=$1
+
+if [ -f $BUILD_DIR/nvm-projects.json ]; then
+    echo "NVM"
+    exit 0
+fi
+
+echo "nvm-projects.json not found"
+exit 1

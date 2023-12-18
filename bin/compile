@@ -1,11 +1,27 @@
 #!/bin/bash
 
 BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
 
-if [ ! -f $BUILD_DIR/nvm-projects.json ]; then
-    echo "nvm-projects.json not found, skipping NVM buildpack"
-    exit 0
-fi
+export_config_vars() {
+  local env_dir=$1
+  if [ -d "$env_dir" ]; then
+    local whitelist_regex=${2:-''}
+    local blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH|LANG|BUILD_DIR)$'}
+    pushd "$env_dir" >/dev/null
+    for e in *; do
+      [ -e "$e" ] || continue
+      echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
+      export "$e=$(cat "$e")"
+      :
+    done
+    popd >/dev/null
+  fi
+}
+
+# Export Heroku Config Vars (Environment Variables)
+export_config_vars "$ENV_DIR"
 
 # Download and install jq
 curl -L -o bin/jq https://github.com/stedolan/jq/releases/download/1.7.1/jq-linux64
@@ -26,6 +42,7 @@ projects=$(jq -c '.[]' "$project_file")
 while IFS= read -r project; do
   name=$(echo "$project" | jq -r '.name')
   package_path=$(echo "$project" | jq -r '.package_path')
+  npm_scripts=$(echo "$project" | jq -r '.npm_scripts // ["build"] | join(" ")')
 
   cd "$(dirname "$BUILD_DIR/$package_path")" || exit
   node_version=$(jq -r '.engines.node' package.json)
@@ -34,11 +51,15 @@ while IFS= read -r project; do
   nvm install "$node_version" || { echo "Installing Node.js version matching $node_version"; nvm install "${node_version%%.*}"; }
   nvm use "$node_version"
 
+  echo $PATH
+
   # Install project's dependencies
-  npm install
+  npm install || { echo "Error installing dependencies for $name - Version $node_version"; exit 1; }
   echo "Installed dependencies for $name - Version $node_version"
 
-  # Build project
-  npm run-script build
-  echo "Build command finished for $name - Version $node_version"
+  # Run the specified npm scripts or default to 'npm run-script build'
+  for script in $npm_scripts; do
+    npm run $script || { echo "Error running npm script '$script' for $name - Version $node_version"; exit 1; }
+    echo "NPM script '$script' finished for $name - Version $node_version"
+  done
 done <<< "$projects"

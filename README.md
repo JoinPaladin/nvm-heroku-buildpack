@@ -30,6 +30,18 @@ In the root of the project add `nvm-projects.json` and provide list of your Node
 ]
 ```
 
+Optionally you can provide a list of NPM scripts to run. By default, it runs install and build scripts.
+
+```json
+[
+  {
+    "name": "Frontend",
+    "package_path": "./assets/app/package.json",
+    "npm_scripts": ["build:lib", "build:app"]
+  }
+]
+```
+
 Add buildpack to your Heroku app
 
 ```bash
