@@ -51,8 +51,6 @@ while IFS= read -r project; do
   nvm install "$node_version" || { echo "Installing Node.js version matching $node_version"; nvm install "${node_version%%.*}"; }
   nvm use "$node_version"
 
-  echo $PATH
-
   # Install project's dependencies
   npm install || { echo "Error installing dependencies for $name - Version $node_version"; exit 1; }
   echo "Installed dependencies for $name - Version $node_version"
