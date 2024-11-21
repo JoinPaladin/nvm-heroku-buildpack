@@ -28,7 +28,7 @@ curl -L -o bin/jq https://github.com/stedolan/jq/releases/download/1.7.1/jq-linu
 chmod +x bin/jq
 
 # Download and install NVM
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
 # Activate NVM
 export NVM_DIR="$HOME/.nvm"
